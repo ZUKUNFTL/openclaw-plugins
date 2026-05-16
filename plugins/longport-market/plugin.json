@@ -1,0 +1,10 @@
+{
+  "name": "longport-market",
+  "tools": [
+    {
+      "name": "longport.getQuote",
+      "entry": "./tools/getQuote.js",
+      "description": "Get real-time stock quote from LongPort API"
+    }
+  ]
+}

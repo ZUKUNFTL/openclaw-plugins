@@ -1,0 +1,10 @@
+# Secrets — never commit actual values
+.env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (if any tools use npm)
+node_modules/
