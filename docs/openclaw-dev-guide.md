@@ -72,16 +72,36 @@ AI 整合结果，回复用户
 │
 ├── plugins/
 │   └── longport-market/                    # 插件：长桥行情
-│       ├── plugin.json                     # 元信息（可选）
+│       ├── plugin.json                     # 元信息
 │       ├── tools/
 │       │   └── getQuote.js                 # Tool：调用长桥 API
 │       └── skills/
 │           └── longport-stock-quote/
 │               └── SKILL.md               # Skill：行情查询触发逻辑
 │
-└── agents/
-    └── equilt-research.json               # Agent Prompt：股票研究分析师
+├── agents/
+│   └── equilt-research.json               # Agent Prompt：股票研究分析师
+│
+├── workspace/                              # Workspace 配置文件（角色设定等）
+│   ├── AGENTS.md                           # AI 助手行为规范 + agent 路由
+│   ├── SOUL.md                             # AI 人格与价值观
+│   ├── IDENTITY.md                         # AI 身份设定
+│   ├── USER.md                             # 用户画像
+│   ├── TOOLS.md                            # 可用工具说明
+│   └── HEARTBEAT.md                        # 保活 / 状态追踪
+│
+└── docs/
+    ├── openclaw-install.md                 # WSL2 安装 + openclaw 常用命令
+    └── openclaw-dev-guide.md              # 本文档
 ```
+
+**运行时路径说明：**
+
+| 仓库路径 | 运行时路径 | 说明 |
+|----------|-----------|------|
+| `plugins/longport-market/` | `~/.openclaw/plugin-runtime-deps/longport-market/` | openclaw install 后的实际加载位置 |
+| `agents/*.json` | `~/.openclaw/agents/main/agent/*.json` | Agent Prompt 存放目录 |
+| `workspace/*.md` | `~/.openclaw/workspace/*.md` | Workspace 配置目录 |
 
 ---
 
@@ -294,6 +314,21 @@ longport.getQuote({ ticker: "600519.SH" }) // 贵州茅台（A股沪市）
 longport.getQuote({ ticker: "000001.SZ" }) // 平安银行（A股深市）
 ```
 
+**实现说明（WSL2 特殊方案）：**
+
+LongPort 行情 API 使用 WebSocket + Protobuf，没有 REST 接口。Node.js SDK `longport` 要求 GLIBC ≥ 2.39，Ubuntu 22.04 只有 2.35，无法安装。
+
+解决方案：通过 `child_process.execFile` 调用 **Windows 侧的 `python.exe`**（Python 3.13），使用 `longbridge` Python SDK。
+
+```
+Node.js (getQuote.js)
+  └─ execFile("python.exe", [app_key, app_secret, access_token, ticker])
+       └─ longbridge.QuoteContext.quote([ticker])
+            └─ 返回 JSON → stdout
+```
+
+**注意**：WSL 环境变量不会传递给 Windows 进程，凭证必须通过命令行参数传递（详见 Section 九）。
+
 **所需环境变量（加入 `~/.bashrc`）：**
 
 ```bash
@@ -301,6 +336,10 @@ export LONGPORT_APP_KEY="your_app_key"
 export LONGPORT_APP_SECRET="your_app_secret"
 export LONGPORT_ACCESS_TOKEN="your_access_token"
 ```
+
+凭证获取：[长桥开发者平台](https://open.longportapp.com) → 个人中心 → API Token
+
+---
 
 ### Agent：equilt-research
 
@@ -311,6 +350,23 @@ export LONGPORT_ACCESS_TOKEN="your_access_token"
 | 工具 | `longport.getQuote`, `web.search`, `web.fetch`, `memory` |
 | 核心规则 | 必须先调用 `longport.getQuote` 获取真实价格，再调用 `web.search` 获取新闻，禁止猜测数据 |
 | 分析模式 | 盘前分析 / 盘后复盘 / 持仓分析 / 全面研究 |
+
+**重要 STOP 规则**：若 `longport.getQuote` 调用失败，立即终止，只输出 `❌ longport.getQuote 失败：[原因]，无法继续分析`，绝不用 web 数据或训练知识替代真实报价。
+
+---
+
+### Workspace 配置文件
+
+存放在 `workspace/`，部署到 `~/.openclaw/workspace/`，每次对话自动加载。
+
+| 文件 | 作用 |
+|------|------|
+| `AGENTS.md` | AI 助手行为规范：persona 路由、工具调用纪律、STOP 规则 |
+| `SOUL.md` | AI 人格与价值观，影响语气和思维方式 |
+| `IDENTITY.md` | AI 身份设定（名字、背景等） |
+| `USER.md` | 用户画像：偏好、持仓风格、风险偏好 |
+| `TOOLS.md` | 可用工具列表和调用规范说明 |
+| `HEARTBEAT.md` | 状态追踪和保活机制 |
 
 ---
 
@@ -395,3 +451,155 @@ openclaw gateway restart
 ```
 
 **影响**：禁用后无法通过局域网自动发现配对手机。股票分析、skills、tools、agent prompt 全部不受影响。
+
+### Agent 没有按 STOP 规则停止，继续用网页数据替代？
+
+STOP 规则需要在两处同时加强：
+
+1. `agents/equilt-research.json` 的 `system_prompt` 末尾
+2. `workspace/AGENTS.md` 的该 agent 描述中
+
+两处都要有明确的"立即终止，只输出 ❌ 失败原因"措辞，**绝对禁止**继续输出。改完后必须同步运行时文件并重启 gateway。
+
+---
+
+## 九、移植到新 OpenClaw（完整 Checklist）
+
+适用场景：你（或他人）在一台新机器上安装了 openclaw，想把本仓库的所有配置都部署进去。
+
+### 前置条件
+
+- [ ] WSL2 + Ubuntu 22.04 已安装并配置好代理（见 `openclaw-install.md` Section 一、二）
+- [ ] `openclaw` CLI 已安装：`npm install -g openclaw`
+- [ ] openclaw 已完成基础配置：`openclaw configure`
+- [ ] Windows 侧已安装 Python 3.13 并安装 `longbridge`：
+  ```powershell
+  # Windows PowerShell
+  pip install longbridge
+  ```
+- [ ] 已从[长桥开发者平台](https://open.longportapp.com)获取 `APP_KEY`、`APP_SECRET`、`ACCESS_TOKEN`
+
+---
+
+### Step 1：克隆仓库
+
+```bash
+git clone https://github.com/ZUKUNFTL/openclaw-plugins.git ~/openclaw-plugins
+```
+
+---
+
+### Step 2：安装 longport-market 插件
+
+```bash
+openclaw plugins install --link --dangerously-force-unsafe-install \
+  ~/openclaw-plugins/plugins/longport-market
+
+openclaw gateway restart
+openclaw skills list | grep longport
+# 应看到 ✓ ready  longport-stock-quote
+```
+
+---
+
+### Step 3：配置长桥凭证
+
+#### 3a. 加入 ~/.bashrc（当前用户会话使用）
+
+```bash
+cat >> ~/.bashrc << 'EOF'
+
+# LongPort API credentials
+export LONGPORT_APP_KEY="your_app_key"
+export LONGPORT_APP_SECRET="your_app_secret"
+export LONGPORT_ACCESS_TOKEN="your_access_token"
+EOF
+
+source ~/.bashrc
+```
+
+#### 3b. 创建 systemd drop-in（gateway 服务使用，关键）
+
+systemd 服务不读 `~/.bashrc`，必须单独注入：
+
+```bash
+mkdir -p ~/.config/systemd/user/openclaw-gateway.service.d
+
+cat > ~/.config/systemd/user/openclaw-gateway.service.d/longport-env.conf << 'EOF'
+[Service]
+Environment="LONGPORT_APP_KEY=your_app_key"
+Environment="LONGPORT_APP_SECRET=your_app_secret"
+Environment="LONGPORT_ACCESS_TOKEN=your_access_token"
+EOF
+
+systemctl --user daemon-reload
+openclaw gateway restart
+```
+
+验证注入成功：
+```bash
+systemctl --user show openclaw-gateway.service --property=Environment \
+  | tr ' ' '\n' | grep LONGPORT_APP_KEY
+```
+
+---
+
+### Step 4：部署 Agent Prompt
+
+```bash
+cp ~/openclaw-plugins/agents/equilt-research.json \
+   ~/.openclaw/agents/main/agent/equilt-research.json
+
+openclaw gateway restart
+```
+
+---
+
+### Step 5：部署 Workspace 配置文件
+
+```bash
+cp ~/openclaw-plugins/workspace/AGENTS.md    ~/.openclaw/workspace/AGENTS.md
+cp ~/openclaw-plugins/workspace/SOUL.md      ~/.openclaw/workspace/SOUL.md
+cp ~/openclaw-plugins/workspace/IDENTITY.md  ~/.openclaw/workspace/IDENTITY.md
+cp ~/openclaw-plugins/workspace/USER.md      ~/.openclaw/workspace/USER.md
+cp ~/openclaw-plugins/workspace/TOOLS.md     ~/.openclaw/workspace/TOOLS.md
+cp ~/openclaw-plugins/workspace/HEARTBEAT.md ~/.openclaw/workspace/HEARTBEAT.md
+
+openclaw gateway restart
+```
+
+> ⚠️ **注意**：`USER.md` 包含用户画像信息（持仓偏好、风险偏好等），按需修改以匹配新用户。
+
+---
+
+### Step 6：验证
+
+```bash
+openclaw doctor                    # 全面健康检查
+openclaw skills list               # 确认 longport-stock-quote ✓ ready
+openclaw infer "AAPL 今日价格"     # 测试 AI 能否调用 longport.getQuote
+```
+
+期望输出：AI 调用 `longport.getQuote({ ticker: "AAPL.US" })` 并返回真实报价，而非猜测。
+
+---
+
+### 后续同步（保持仓库与本地一致）
+
+仓库更新后，重新执行对应 Step 即可。或使用一键同步脚本：
+
+```bash
+# 拉取最新
+cd ~/openclaw-plugins && git pull
+
+# 同步 agent prompts
+cp ~/openclaw-plugins/agents/*.json ~/.openclaw/agents/main/agent/
+
+# 同步 workspace 文件
+cp ~/openclaw-plugins/workspace/*.md ~/.openclaw/workspace/
+
+# 重启生效
+openclaw gateway restart
+```
+
+> 插件已用 `--link` 安装，源码更新后无需重新安装，重启 gateway 即可。
