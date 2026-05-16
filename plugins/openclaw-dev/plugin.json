@@ -1,0 +1,11 @@
+{
+  "name": "openclaw-dev",
+  "description": "OpenClaw 开发与维护工具集",
+  "skills": [
+    {
+      "name": "sync-repo",
+      "entry": "./skills/sync-repo/SKILL.md",
+      "description": "同步 openclaw-plugins 仓库文件到运行时目录"
+    }
+  ]
+}

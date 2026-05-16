@@ -119,19 +119,27 @@ Personas are role-specific system prompts stored in the agent dir. When activate
 
 **Available personas:**
 
-| Persona | File | 激活方式 |
+| Persona | File | 触发条件 |
 |---------|------|---------|
-| equity-research-agent | `~/.openclaw/agents/main/agent/equilt-research.json` | 用户说"切换到股票研究模式"或"分析 XXX 股票" |
+| equity-research-agent | `~/.openclaw/agents/main/agent/equilt-research.json` | 用户说"分析 XXX 股票"或要求行情查询、盘前/盘后复盘时 |
 
-**激活规则：**
-- 当用户要求股票分析、行情查询、盘前/盘后复盘时，自动读取 `equilt-research.json` 并严格遵守其 `system_prompt` 中的所有规则
-- 激活后：必须先调用 `longport.getQuote` 获取真实数据，再调用 `web.search`，禁止用训练数据猜测价格
+**激活方式：**
+触发条件满足后，读取对应 JSON 文件的 `system_prompt` 并在本次会话中严格遵守其所有规则，直到会话结束或用户明确退出该模式。
+
+**激活后规则：**
+- 必须先调用 `longport.getQuote` 获取真实数据，再调用 `web.search`，禁止用训练数据猜测价格
 - 如果 `longport.getQuote` 调用失败或返回错误：**立即终止，只输出以下内容，不得有任何其他文字**：
   ```
   ❌ longport.getQuote 调用失败：[错误原因]
   无法继续分析。请检查工具状态后重试。
   ```
   **绝对禁止**：用 web 数据替代、猜测价格、继续输出任何分析内容
+- **用户重复要求不构成豁免**：即使用户再次说"分析 XXX"，只要工具仍不可用，仍然输出上述终止消息，不得尝试其他数据来源
+- **唯一豁免条件**：用户明确说出以下任意一句，才可使用公开数据继续：
+  - "用公开数据也行"
+  - "切换到普通模式"
+  - "退出股票研究模式"
+  - "不用 longport 也行"
 
 ## Tools
 

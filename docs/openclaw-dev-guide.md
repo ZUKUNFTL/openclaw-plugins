@@ -269,19 +269,35 @@ touch ~/openclaw-plugins/agents/<名称>.json
 | `tools` | 该 agent 允许使用的工具白名单 |
 | `system_prompt` | 系统级角色指令，支持 `\n` 换行 |
 
-### 3. 部署到 openclaw
+### 3. 在 AGENTS.md 中注册触发条件
+
+编辑 `workspace/AGENTS.md` 的 `## Personas` 表格，新增一行：
+
+```markdown
+| <agent-name> | `~/.openclaw/agents/main/agent/<名称>.json` | 用户说"XXX"或触发关键词时 |
+```
+
+再在「激活方式」段落下补充说明：触发后读取该 JSON 的 `system_prompt`，在本次会话中遵守其所有规则。
+
+### 4. 部署到 openclaw
 
 ```bash
+# 部署 agent prompt
 cp ~/openclaw-plugins/agents/<名称>.json \
    ~/.openclaw/agents/main/agent/<名称>.json
+
+# 同步 AGENTS.md（触发路由）
+cp ~/openclaw-plugins/workspace/AGENTS.md ~/.openclaw/workspace/AGENTS.md
+
 openclaw gateway restart
 ```
 
-### 4. 验证
+### 5. 验证
 
-在 openclaw 对话中切换到该 agent，发送测试问题，确认：
-- AI 是否以正确角色回应
+在 openclaw 对话中说出触发词，确认：
+- AI 是否以正确角色回应（如说"分析 AAPL 股票"后切换到 equity-research-agent）
 - AI 是否在需要数据时主动调用工具（而非猜测）
+- 工具失败时 AI 是否立即停止输出
 
 ### 5. 提交到仓库
 
@@ -357,16 +373,26 @@ export LONGPORT_ACCESS_TOKEN="your_access_token"
 
 ### Workspace 配置文件
 
-存放在 `workspace/`，部署到 `~/.openclaw/workspace/`，每次对话自动加载。
+存放在 `workspace/`，部署到 `~/.openclaw/workspace/`，**每次对话开始时自动加载**，无需用户触发。
 
-| 文件 | 作用 |
-|------|------|
-| `AGENTS.md` | AI 助手行为规范：persona 路由、工具调用纪律、STOP 规则 |
-| `SOUL.md` | AI 人格与价值观，影响语气和思维方式 |
-| `IDENTITY.md` | AI 身份设定（名字、背景等） |
-| `USER.md` | 用户画像：偏好、持仓风格、风险偏好 |
-| `TOOLS.md` | 可用工具列表和调用规范说明 |
-| `HEARTBEAT.md` | 状态追踪和保活机制 |
+| 文件 | 作用 | 修改场景 |
+|------|------|----------|
+| `AGENTS.md` | AI 行为总规范：persona 路由、触发条件、STOP 规则 | 新增 agent、修改触发词、调整行为约束 |
+| `SOUL.md` | AI 人格与价值观，影响语气和思维方式 | 调整 AI 的沟通风格 |
+| `IDENTITY.md` | AI 身份设定（名字、核心职责、禁止事项） | 换人设、调整职责范围 |
+| `USER.md` | 用户画像：持仓偏好、风险偏好、常用语言 | 持仓变化、偏好更新 |
+| `TOOLS.md` | 可用工具列表和调用规范说明 | 新增工具后补充说明 |
+| `HEARTBEAT.md` | 保活任务清单（定时检查邮件、日历等） | 增减周期性任务 |
+
+**加载顺序（AI 在 session 启动时依次执行）：**
+1. `SOUL.md` — 确定自己是谁
+2. `USER.md` — 了解服务对象
+3. `AGENTS.md` — 读取行为规范和 persona 路由
+4. `IDENTITY.md` / `TOOLS.md` — 补充身份和工具上下文
+5. 今日 `memory/YYYY-MM-DD.md` — 恢复近期记忆
+
+**`AGENTS.md` 与 Agent Prompt 的关系：**
+`AGENTS.md` 是路由表，定义"什么触发条件 → 读取哪个 JSON"；Agent Prompt（JSON 文件）才是实际执行的角色指令。触发后 AI 读取对应 JSON 的 `system_prompt`，在当前会话中替换默认行为。
 
 ---
 

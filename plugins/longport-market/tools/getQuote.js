@@ -6,6 +6,7 @@ const execFileAsync = promisify(execFile);
 // LongPort quote API is WebSocket/protobuf only — no REST equivalent.
 // Use Windows Python (python.exe) which has longbridge SDK installed.
 // Credentials are passed as CLI args since WSL env vars don't cross the boundary.
+// Windows Python dir is added to gateway's PATH via systemd drop-in override.conf
 const PYTHON_EXE = "python.exe";
 const PYTHON_SCRIPT = `
 import sys, json
