@@ -374,9 +374,17 @@ export LONGPORT_ACCESS_TOKEN="your_access_token"
 
 ### 修改后同步
 
-修改了 Tool 或 Skill 后（已用 `--link` 安装，无需重装）：
+> **注意**：`openclaw plugins install --link` 实际上是拷贝文件，不是软链接。修改 repo 中的 Tool 或 Skill 后，**必须手动 copy 到运行时目录**才能生效。
+
+修改了 Tool 或 Skill 后：
 
 ```bash
+# 同步插件文件到运行时目录
+cp -r ~/openclaw-plugins/plugins/longport-market/tools/ \
+   ~/.openclaw/plugin-runtime-deps/longport-market/tools/
+cp -r ~/openclaw-plugins/plugins/longport-market/skills/ \
+   ~/.openclaw/plugin-runtime-deps/longport-market/skills/
+
 openclaw gateway restart
 openclaw skills list   # 确认 skill 仍显示 ✓ ready
 ```
@@ -386,6 +394,13 @@ openclaw skills list   # 确认 skill 仍显示 ✓ ready
 ```bash
 cp ~/openclaw-plugins/agents/equilt-research.json \
    ~/.openclaw/agents/main/agent/equilt-research.json
+openclaw gateway restart
+```
+
+修改了 Workspace 文件后：
+
+```bash
+cp ~/openclaw-plugins/workspace/*.md ~/.openclaw/workspace/
 openclaw gateway restart
 ```
 
@@ -602,4 +617,4 @@ cp ~/openclaw-plugins/workspace/*.md ~/.openclaw/workspace/
 openclaw gateway restart
 ```
 
-> 插件已用 `--link` 安装，源码更新后无需重新安装，重启 gateway 即可。
+> `openclaw plugins install --link` 实际是拷贝文件，不是软链接。更新插件源码后需手动 `cp -r` 到运行时目录再重启 gateway（见 Section 七）。
