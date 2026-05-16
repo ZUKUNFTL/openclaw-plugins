@@ -372,3 +372,26 @@ openclaw skills list   # 验证
 ### `--dangerously-force-unsafe-install` 是什么？
 
 openclaw 安全扫描会将"读取环境变量 + 发起网络请求"标记为潜在凭据泄露风险。对于自己编写且来源明确的 API 插件，这是正常行为，可以安全绕过。
+
+### WSL2 上 gateway 反复崩溃，报 `disconnected (1006): no reason`
+
+**现象**：gateway 启动约 25 秒后自动退出，客户端断连，循环重启。
+
+**日志特征**（`journalctl --user -u openclaw-gateway.service -n 50`）：
+
+```
+[plugins] bonjour: restarting advertiser (service stuck in announcing for 10xxxms)
+[openclaw] Unhandled promise rejection: CIAO ANNOUNCEMENT CANCELLED
+openclaw-gateway.service: Main process exited, code=exited, status=1/FAILURE
+```
+
+**根因**：`bonjour` 插件负责局域网 mDNS 广播（用于手机配对）。WSL2 不支持 multicast，导致广播永远卡在 announcing 状态超时，触发 unhandled rejection 杀死整个 gateway 进程。
+
+**解决方法**：
+
+```bash
+openclaw plugins disable bonjour
+openclaw gateway restart
+```
+
+**影响**：禁用后无法通过局域网自动发现配对手机。股票分析、skills、tools、agent prompt 全部不受影响。
