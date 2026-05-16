@@ -21,6 +21,13 @@ wsl --setdefault Ubuntu-22.04
 wsl -d Ubuntu-22.04
 ```
 
+### 安装常用工具
+
+```bash
+sudo apt update
+sudo apt install docker-compose -y
+```
+
 ### 把 WSL 镜像迁移到其他盘（避免 C 盘占满）
 
 ```powershell
