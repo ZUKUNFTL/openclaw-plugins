@@ -18,6 +18,12 @@ plugins/
 |--------|-------------|
 | [longport-market](./plugins/longport-market) | LongPort OpenAPI — real-time stock quotes (HK/US/A-share) |
 
+## Agents
+
+| File | Description |
+|------|-------------|
+| [equilt-research.json](./agents/equilt-research.json) | Equity research agent — Sell-side tech stock analyst with LongPort + web search |
+
 ## Setup
 
 Install each plugin with:
