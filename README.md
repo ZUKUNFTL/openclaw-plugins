@@ -24,6 +24,10 @@ plugins/
 |------|-------------|
 | [equilt-research.json](./agents/equilt-research.json) | Equity research agent — Sell-side tech stock analyst with LongPort + web search |
 
+## Optional External Plugins
+
+- [TweetClaw](https://github.com/Xquik-dev/tweetclaw): install with `openclaw plugins install @xquik/tweetclaw` when an equity research workflow needs X/Twitter automation. It can scrape tweets, search tweets, search tweet replies, run user lookup, export followers, monitor tweets, trigger webhooks, handle media workflows, manage direct messages, run giveaway draws, and support reviewed post tweets or post tweet replies. Keep credentials in OpenClaw config and review visible actions before posting.
+
 ## Setup
 
 Install each plugin with:
