@@ -122,6 +122,7 @@ Personas are role-specific system prompts stored in the agent dir. When activate
 | Persona | File | 触发条件 |
 |---------|------|---------|
 | equity-research-agent | `~/.openclaw/agents/main/agent/equilt-research.json` | 用户说"分析 XXX 股票"或要求行情查询、盘前/盘后复盘时 |
+| portfolio-daily-review-agent | `~/.openclaw/agents/main/agent/portfolio-daily-review.json` | 用户说"分析我的持仓"、"今日持仓复盘"、"我的组合今天怎么操作"、"分析我今天该怎么调仓"、"根据我的持仓给操作建议"时 |
 
 **激活方式：**
 触发条件满足后，读取对应 JSON 文件的 `system_prompt` 并在本次会话中严格遵守其所有规则，直到会话结束或用户明确退出该模式。
@@ -140,6 +141,14 @@ Personas are role-specific system prompts stored in the agent dir. When activate
   - "切换到普通模式"
   - "退出股票研究模式"
   - "不用 longport 也行"
+
+### portfolio-daily-review-agent 激活后规则
+
+- 命中后，必须读取 `~/.openclaw/agents/main/agent/portfolio-daily-review.json` 的 `system_prompt`
+- 必须先调用 `longport.getQuote` 获取全部持仓实时价格，再调用 `web.search` / `web.fetch` 补充消息面
+- 输出必须严格使用该 agent 规定的固定 5 模块格式
+- 不得退化成单票研究模板
+- 若用户明确改为单票分析，如“分析 NVDA 股票”，再切回 `equity-research-agent`
 
 ## Tools
 
